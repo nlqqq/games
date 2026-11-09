@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Count Up</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e6d9bf; --panel:#f1e8d4; --ink:#2b2218; --muted:#7a6a52; --edge:#cdbb98;
+  --c1:#9b2f2f; --c2:#8a5a12; --c3:#1f5f5b; --c4:#2f3e7e; --c5:#6b3a7a; --c6:#3d5a2a;
+  --shadow:rgba(43,34,24,.35);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent;user-select:none}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px 8px;max-width:900px;width:100%;margin:0 auto}
+h1{font-size:1.35rem;font-weight:800;margin:0;letter-spacing:-.02em}
+.stats{display:flex;gap:16px;font-weight:500;color:var(--muted);font-size:.95rem}
+.stats b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums}
+.next{padding:0 18px 10px;max-width:900px;width:100%;margin:0 auto;display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:500}
+.bar{flex:1;height:8px;border-radius:99px;background:var(--edge);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--c3);border-radius:99px;transition:width .2s}
+main{flex:1;min-height:0;padding:0 14px 14px;max-width:900px;width:100%;margin:0 auto}
+#board{position:relative;width:100%;height:100%;background:var(--panel);border-radius:22px;border:2px solid var(--edge);overflow:hidden}
+.shape{position:absolute;border:0;padding:0;background:none;cursor:pointer;filter:drop-shadow(0 5px 0 var(--shadow));transition:transform .12s,opacity .25s;animation:pop .28s backwards}
+.shape span{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font:800 var(--fs,2rem)/1 "Bricolage Grotesque",system-ui,sans-serif;color:#fff}
+.shape:active{transform:translateY(3px)}
+.shape:focus-visible{outline:3px solid var(--ink);outline-offset:4px;border-radius:12px}
+.shape.done{opacity:0;transform:scale(.4);pointer-events:none}
+.shape.bad{animation:shake .3s}
+.s-circle span{border-radius:50%}
+.s-square span{border-radius:18%}
+.s-triangle span{clip-path:polygon(50% 4%,98% 92%,2% 92%);padding-top:24%}
+.s-diamond span{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.s-hexagon span{clip-path:polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%)}
+.s-pentagon span{clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%);padding-top:8%}
+.s-star span{clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);padding-top:10%}
+@keyframes pop{from{transform:scale(0)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion:reduce){.shape,.shape.bad{animation:none}}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;background:color-mix(in srgb,var(--panel) 94%,transparent);z-index:5;overflow:auto}
+.overlay[hidden]{display:none}
+.overlay h2{margin:0;font-size:2rem;font-weight:800;letter-spacing:-.02em}
+.overlay p{margin:0;color:var(--muted);max-width:32ch;line-height:1.4}
+.range{display:flex;gap:14px;align-items:flex-end;margin-top:8px}
+.range label{display:flex;flex-direction:column;gap:4px;font-weight:500;color:var(--muted);font-size:.9rem;text-align:left}
+.range input{width:92px;font:800 1.5rem "Bricolage Grotesque",system-ui,sans-serif;text-align:center;padding:8px;border-radius:12px;border:2px solid var(--edge);background:var(--bg);color:var(--ink)}
+.range input:focus-visible{outline:3px solid var(--c4);outline-offset:2px}
+.range input[readonly]{opacity:.65;cursor:not-allowed}
+.range .dash{font-weight:800;font-size:1.5rem;padding-bottom:10px;color:var(--muted)}
+.presets{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.chip{font:500 .95rem "Bricolage Grotesque",system-ui,sans-serif;padding:7px 14px;border-radius:99px;border:2px solid var(--edge);background:transparent;color:var(--ink);cursor:pointer}
+.chip.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.chip:focus-visible{outline:3px solid var(--c4);outline-offset:2px}
+.err{min-height:1.2em;color:var(--c1);font-weight:500;font-size:.9rem}
+.btn{margin-top:4px;font:800 1.1rem "Bricolage Grotesque",system-ui,sans-serif;background:var(--c4);color:#fff;border:0;border-radius:14px;padding:14px 28px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.3)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.btn:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.btn.alt{background:transparent;color:var(--ink);box-shadow:none;border:2px solid var(--edge);padding:10px 20px;font-size:1rem}
+.back{font:500 .95rem "Bricolage Grotesque",system-ui,sans-serif;background:transparent;color:var(--ink);border:2px solid var(--edge);border-radius:99px;padding:6px 14px;cursor:pointer}
+.back[hidden]{display:none}
+.back:focus-visible{outline:3px solid var(--c4);outline-offset:2px}
+.pen{position:absolute;right:14px;top:10px;color:var(--c1);font-weight:800;opacity:0;transition:opacity .2s;z-index:4}
+.pen.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <button class="back" id="back" hidden>‹ Start page</button>
+  <h1>Count Up</h1>
+  <div class="stats"><span>Round <b id="round">1</b></span><span>Time <b id="time">0.0</b>s</span><span>Best <b id="best">–</b></span></div>
+</header>
+<div class="next"><span>Tap <span id="minl">1</span> to <span id="max">10</span></span><div class="bar"><i id="fill"></i></div></div>
+<main>
+  <div id="board">
+    <div class="pen" id="pen">+2s</div>
+    <div class="overlay" id="overlay">
+      <h2 id="ot">Count up</h2>
+      <p id="od">Tap the shapes from the lowest number to the highest. A wrong tap adds 2 seconds.</p>
+      <div id="setup">
+        <div class="range">
+          <label>From<input id="rmin" type="text" value="1" readonly aria-readonly="true"></label>
+          <span class="dash">–</span>
+          <label>To<input id="rmax" type="number" inputmode="numeric" value="10" min="1" max="999"></label>
+        </div>
+        <div class="err" id="err" role="alert"></div>
+      </div>
+      <button class="btn" id="go">Start</button>
+      <button class="btn alt" id="change" hidden>Change range</button>
+    </div>
+  </div>
+</main>
+<script>
+(function(){
+  var board=document.getElementById('board'),overlay=document.getElementById('overlay');
+  var $=function(i){return document.getElementById(i)};
+  var elRound=$('round'),elTime=$('time'),elBest=$('best'),elMax=$('max'),elMin=$('minl'),elFill=$('fill'),pen=$('pen');
+  var back=$('back'),ot=$('ot'),od=$('od'),go=$('go'),setup=$('setup'),change=$('change'),rmin=$('rmin'),rmax=$('rmax'),err=$('err');
+  var shapes=['circle','square','triangle','diamond','hexagon','pentagon'];
+  var colors=['--c1','--c2','--c3','--c4','--c5','--c6'];
+  var lo=1,hi=10,round=1,count=10,expected=1,start=0,penalty=0,timer=null,playing=false,bests={};
+  try{bests=JSON.parse(localStorage.getItem('countup-bests')||'{}')||{}}catch(e){bests={}}
+
+  function rnd(a,b){return a+Math.random()*(b-a)}
+  function key(){return lo+'-'+hi}
+  function showBest(){elBest.textContent=bests[key()]?bests[key()].toFixed(1)+'s':'–'}
+
+  rmax.addEventListener('input',function(){err.textContent=''});
+
+  function layout(w,h,n){
+    var size=Math.min(140,Math.sqrt(w*h/(n*2.4)),Math.min(w,h)*.34),pts;
+    for(;size>=38;size*=.94){
+      pts=[];var fail=false;
+      for(var i=0;i<n&&!fail;i++){
+        var ok=false;
+        for(var t=0;t<300;t++){
+          var x=rnd(10,w-size-10),y=rnd(38,h-size-14);
+          if(pts.every(function(p){return Math.max(Math.abs(p.x-x),Math.abs(p.y-y))>=size*1.1})){pts.push({x:x,y:y});ok=true;break}
+        }
+        if(!ok)fail=true;
+      }
+      if(!fail)return{size:size,pts:pts};
+    }
+    size=38;pts=[];
+    var step=size*1.15,cols=Math.max(1,Math.floor((w-20)/step));
+    for(var k=0;k<n;k++)pts.push({x:10+(k%cols)*step,y:38+Math.floor(k/cols)*step});
+    return{size:size,pts:pts};
+  }
+
+  function build(){
+    board.querySelectorAll('.shape').forEach(function(n){n.remove()});
+    count=hi-lo+1;expected=lo;penalty=0;
+    elRound.textContent=round;elMin.textContent=lo;elMax.textContent=hi;elFill.style.width='0';showBest();
+    var L=layout(board.clientWidth,board.clientHeight,count),size=L.size;
+    for(var i=0;i<count;i++){
+      var n=lo+i,btn=document.createElement('button');
+      btn.className='shape s-'+shapes[Math.floor(Math.random()*shapes.length)];
+      btn.style.cssText='left:'+L.pts[i].x+'px;top:'+L.pts[i].y+'px;width:'+size+'px;height:'+size+'px;--fs:'+(size*(String(n).length>2?.34:.46))+'px;animation-delay:'+(i*15)+'ms';
+      btn.setAttribute('aria-label','Number '+n);
+      var s=document.createElement('span');
+      s.textContent=n;
+      s.style.background='var('+colors[Math.floor(Math.random()*colors.length)]+')';
+      btn.appendChild(s);btn.dataset.n=n;
+      btn.addEventListener('pointerdown',function(e){e.preventDefault();tap(this)});
+      btn.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();tap(this)}});
+      board.appendChild(btn);
+    }
+  }
+
+  function tick(){elTime.textContent=((performance.now()-start)/1000+penalty).toFixed(1)}
+
+  function tap(el){
+    if(!playing||el.classList.contains('done'))return;
+    var n=parseInt(el.dataset.n,10);
+    if(n===expected){
+      el.classList.add('done');expected++;
+      elFill.style.width=((expected-lo)/count*100)+'%';
+      if(expected>hi)finish();
+    }else{
+      penalty+=2;
+      el.classList.remove('bad');void el.offsetWidth;el.classList.add('bad');
+      pen.classList.add('on');setTimeout(function(){pen.classList.remove('on')},600);
+      tick();
+    }
+  }
+
+  function finish(){
+    playing=false;clearInterval(timer);
+    var t=(performance.now()-start)/1000+penalty,record=!bests[key()]||t<bests[key()];
+    if(record){bests[key()]=t;try{localStorage.setItem('countup-bests',JSON.stringify(bests))}catch(e){}}
+    showBest();
+    setTimeout(function(){
+      ot.textContent=record?'New best: '+t.toFixed(1)+'s':'Round '+round+' cleared';
+      od.textContent=(record?'Round '+round+' cleared. ':'')+t.toFixed(1)+' seconds'+(penalty?', including '+penalty+' seconds of penalties':'')+'.';
+      setup.hidden=true;go.textContent='Next round';change.hidden=false;overlay.hidden=false;
+      go.onclick=function(){round++;begin()};
+    },350);
+  }
+
+  function begin(){
+    overlay.hidden=true;back.hidden=false;build();
+    playing=true;start=performance.now();
+    clearInterval(timer);timer=setInterval(tick,100);tick();
+  }
+
+  function startNew(){
+    var a=parseInt(rmin.value,10),b=parseInt(rmax.value,10);
+    if(isNaN(a)||isNaN(b)||a<0||b>999){err.textContent='Enter whole numbers between 0 and 999.';return}
+    if(b<=a){err.textContent='Enter a “To” number of 2 or higher.';return}
+    if(b-a+1>30){err.textContent='Pick a range of 30 numbers or fewer.';return}
+    lo=a;hi=b;round=1;begin();
+  }
+  go.onclick=startNew;
+  function toStart(){
+    playing=false;clearInterval(timer);
+    board.querySelectorAll('.shape').forEach(function(n){n.remove()});
+    elTime.textContent='0.0';elRound.textContent='1';elFill.style.width='0';
+    ot.textContent='Choose a range';od.textContent='Pick the highest number for the game. It always starts at 1.';
+    err.textContent='';setup.hidden=false;change.hidden=true;back.hidden=true;
+    go.textContent='Start';go.onclick=startNew;overlay.hidden=false;
+  }
+  change.onclick=toStart;
+  back.onclick=toStart;
+})();
+</script>
+</body>
+</html>
