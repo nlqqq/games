@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Memory Match</title>
+<style>
+:root{color-scheme:light;--bg:#fff;--ink:#222;--accent:#7c5cff;--accent2:#ff7eb6;--line:#e6e3f5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.screen{position:absolute;inset:0;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);display:none;flex-direction:column}
+.screen.on{display:flex}
+#start{align-items:center;justify-content:center;gap:18px;padding:20px;text-align:center;overflow-y:auto}
+h1{margin:0;font-size:clamp(26px,8vw,40px)}
+p.sub{margin:0;color:#666;font-size:15px}
+.opts{display:flex;flex-direction:column;align-items:center;gap:8px;width:min(320px,86vw)}
+.big{font-size:44px;font-weight:800;color:var(--accent);line-height:1}
+.big small{font-size:16px;font-weight:600;color:#777;margin-left:6px}
+#range,#trange{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:99px;outline:none;touch-action:pan-y;background:linear-gradient(90deg,var(--accent) var(--p,30%),var(--line) var(--p,30%))}
+#range::-webkit-slider-thumb,#trange::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:36px;height:36px;border-radius:50%;background:#fff;border:4px solid var(--accent);box-shadow:0 2px 8px rgba(124,92,255,.35)}
+#range::-moz-range-thumb,#trange::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid var(--accent)}
+.ends{display:flex;justify-content:space-between;width:100%;font-size:12px;color:#888}
+.opt{width:72px;height:72px;border-radius:18px;border:2px solid var(--line);background:#fff;font-size:24px;font-weight:700;color:var(--ink)}
+.opt small{display:block;font-size:11px;font-weight:500;color:#777}
+.opt.sel{border-color:var(--accent);background:#f3efff;color:var(--accent)}
+.btn{border:0;border-radius:16px;padding:14px 28px;font-size:17px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.btn.alt{background:#fff;color:var(--accent);border:2px solid var(--line)}
+.up{display:inline-block;border:2px dashed var(--accent);color:var(--accent);border-radius:16px;padding:12px 22px;font-weight:600;cursor:pointer}
+#thumbs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:320px;max-height:110px;overflow:hidden}
+#thumbs img{width:34px;height:34px;border-radius:8px;object-fit:cover}
+#bar{height:48px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-weight:600}
+#bar button{border:0;background:#f3efff;color:var(--accent);border-radius:12px;padding:8px 14px;font-weight:700;font-size:14px}
+#board{flex:1;min-height:0;padding:10px;display:flex}
+#grid{margin:auto;display:grid;gap:10px;justify-content:center;align-content:center}
+.card{width:var(--s);height:var(--s);perspective:600px;cursor:pointer;touch-action:manipulation}
+.in{position:relative;width:100%;height:100%;transition:transform .35s;transform-style:preserve-3d}
+.card.flip .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;border-radius:18%;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.back{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:calc(var(--s)*.4);font-weight:700}
+.front{transform:rotateY(180deg);background:#fff;border:2px solid var(--line);font-size:calc(var(--s)*.55)}
+.front img{width:100%;height:100%;object-fit:cover}
+.card.done .front{border-color:#7ad9a0;box-shadow:0 0 0 3px #d6f5e3 inset}
+.card.done{pointer-events:none}
+#win{position:absolute;inset:0;background:rgba(255,255,255,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+#win.on{display:flex}
+#win h2{margin:0;font-size:32px}
+</style>
+</head>
+<body>
+<div id="start" class="screen on">
+  <h1>Memory Match</h1>
+  <p class="sub">How many pairs per round?</p>
+  <div class="opts"><div class="big"><span id="pv">6</span><small>pairs</small></div><input id="range" type="range" min="2" max="15" step="1" value="6" aria-label="Number of pairs"><div class="ends"><span>2</span><span>15</span></div></div>
+  <p class="sub">Peek time before the game starts</p>
+  <div class="opts"><div class="big"><span id="tv">3</span><small id="tu">seconds</small></div><input id="trange" type="range" min="0" max="10" step="1" value="3" aria-label="Seconds to show cards"><div class="ends"><span>Off</span><span>10s</span></div></div>
+  <label class="up">📷 Upload photos<input id="file" type="file" accept="image/*" multiple hidden></label>
+  <div id="thumbs"></div>
+  <p class="sub" id="hint">No photos? Fun emoji cards will be used.</p>
+  <button class="btn" id="play">Start game</button>
+</div>
+
+<div id="game" class="screen">
+  <div id="bar"><button id="back">← Menu</button><span id="moves">Moves: 0</span></div>
+  <div id="board"><div id="grid"></div></div>
+  <div id="win"><h2>🎉 You did it!</h2><p class="sub" id="wmsg"></p><button class="btn" id="again">Play again</button><button class="btn alt" id="menu">Menu</button></div>
+</div>
+
+<script>
+const EMOJI=["🏰","👑","🦄","🐉","🪄","🌟","🎠","🦋","🌹","🐸","🐚","🎈","🍭","🎀","🧸"];
+const GAP=10;
+let pairs=6, photos=[], cards=[], first=null, lock=false, moves=0, found=0;
+const $=id=>document.getElementById(id);
+
+// pair selection slider
+function updateHint(){
+  if(!photos.length)return;
+  $("hint").textContent=photos.length+" photo"+(photos.length===1?"":"s")+" added"+(photos.length<pairs?" – emoji will fill the rest.":".");
+}
+function setPairs(){
+  const r=$("range");pairs=+r.value;$("pv").textContent=pairs;
+  r.style.setProperty("--p",((pairs-r.min)/(r.max-r.min)*100)+"%");
+  updateHint();
+}
+$("range").addEventListener("input",setPairs);
+setPairs();
+
+// preview time slider
+let previewSec=3, timer=null;
+function setPreview(){
+  const r=$("trange");previewSec=+r.value;
+  $("tv").textContent=previewSec||"Off";
+  $("tu").style.display=previewSec?"":"none";
+  r.style.setProperty("--p",(previewSec/r.max*100)+"%");
+}
+$("trange").addEventListener("input",setPreview);
+setPreview();
+
+// upload: crop to square and shrink
+function toSquare(file){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      const im=new Image();
+      im.onload=()=>{
+        const s=Math.min(im.width,im.height),c=document.createElement("canvas");
+        c.width=c.height=300;
+        c.getContext("2d").drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,300,300);
+        res(c.toDataURL("image/jpeg",.85));
+      };
+      im.onerror=()=>res(null);
+      im.src=r.result;
+    };
+    r.onerror=()=>res(null);
+    r.readAsDataURL(file);
+  });
+}
+$("file").onchange=async e=>{
+  const out=await Promise.all([...e.target.files].map(toSquare));
+  photos=photos.concat(out.filter(Boolean));
+  $("thumbs").innerHTML=photos.slice(0,40).map(p=>`<img src="${p}" alt="">`).join("");
+  updateHint();
+};
+
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+function build(){
+  const faces=shuffle(photos.map(p=>({img:p}))).slice(0,pairs);
+  const emo=shuffle(EMOJI.slice());
+  while(faces.length<pairs)faces.push({txt:emo.pop()});
+  cards=shuffle(faces.flatMap((f,i)=>[{...f,id:i},{...f,id:i}]));
+  first=null;lock=false;moves=0;found=0;
+  $("moves").textContent="Moves: 0";
+  $("win").classList.remove("on");
+  const g=$("grid");g.innerHTML="";
+  cards.forEach((c,i)=>{
+    const el=document.createElement("div");el.className="card";
+    el.innerHTML=`<div class="in"><div class="face back">?</div><div class="face front">${c.img?`<img src="${c.img}" alt="">`:c.txt}</div></div>`;
+    el.onclick=()=>pick(i,el);
+    c.el=el;g.appendChild(el);
+  });
+  layout();
+  startPreview();
+}
+
+// show all cards face up for a few seconds, then hide them and begin
+function startPreview(){
+  clearInterval(timer);
+  if(!previewSec)return;
+  lock=true;
+  let t=previewSec;
+  $("moves").textContent="Memorise! "+t;
+  setTimeout(()=>cards.forEach(c=>c.el.classList.add("flip")),250);
+  timer=setInterval(()=>{
+    t--;
+    if(t>0){$("moves").textContent="Memorise! "+t;return}
+    clearInterval(timer);
+    cards.forEach(c=>c.el.classList.remove("flip"));
+    $("moves").textContent="Moves: 0";
+    lock=false;
+  },1000);
+}
+
+// pick the column count that makes the squares largest while fitting the screen
+function layout(){
+  const b=$("board"),W=b.clientWidth-20,H=b.clientHeight-20,n=cards.length;
+  if(!n)return;
+  let best=0,cols=1;
+  for(let c=1;c<=n;c++){
+    const r=Math.ceil(n/c);
+    const s=Math.min((W-GAP*(c-1))/c,(H-GAP*(r-1))/r);
+    if(s>best){best=s;cols=c}
+  }
+  const g=$("grid"),s=Math.floor(best);
+  g.style.setProperty("--s",s+"px");
+  g.style.gridTemplateColumns=`repeat(${cols},${s}px)`;
+}
+addEventListener("resize",layout);
+
+function pick(i,el){
+  if(lock||el.classList.contains("flip"))return;
+  el.classList.add("flip");
+  if(first===null){first=i;return}
+  moves++;$("moves").textContent="Moves: "+moves;
+  const a=cards[first],b=cards[i];
+  if(a.id===b.id){
+    setTimeout(()=>{a.el.classList.add("done");b.el.classList.add("done")},300);
+    first=null;
+    if(++found===pairs)setTimeout(()=>{$("wmsg").textContent="Finished in "+moves+" moves";$("win").classList.add("on")},800);
+  }else{
+    lock=true;const f=first;first=null;
+    setTimeout(()=>{cards[f].el.classList.remove("flip");el.classList.remove("flip");lock=false},800);
+  }
+}
+
+function show(id){["start","game"].forEach(s=>$(s).classList.toggle("on",s===id))}
+$("play").onclick=()=>{show("game");build()};
+$("again").onclick=build;
+$("menu").onclick=$("back").onclick=()=>show("start");
+</script>
+</body>
+</html>
